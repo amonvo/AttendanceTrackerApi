@@ -1,4 +1,5 @@
 ﻿using AttendanceTrackerApi.Data;
+using AttendanceTrackerApi.Dtos;
 using AttendanceTrackerApi.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,6 @@ namespace AttendanceTrackerApi.Controllers
     public class UsersController : ControllerBase
     {
         private readonly AppDbContext _context;
-        // Bezpečná třída pro hashování a ověření hesla
         private readonly PasswordHasher<User> _passwordHasher = new PasswordHasher<User>();
 
         public UsersController(AppDbContext context)
@@ -20,45 +20,79 @@ namespace AttendanceTrackerApi.Controllers
         }
 
         /// <summary>
-        /// Získat všechny uživatele.
+        /// Výpis všech uživatelů (BEZ hash hesla, bezpečné!)
         /// </summary>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
         {
-            return await _context.Users.ToListAsync();
+            // Promapujeme User → UserDto, hash hesla nikdy nevracíme!
+            var users = await _context.Users
+                .Select(u => new UserDto
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    Email = u.Email,
+                    Role = u.Role
+                })
+                .ToListAsync();
+
+            return Ok(users);
         }
 
         /// <summary>
-        /// Získat konkrétního uživatele podle ID.
+        /// Detail uživatele podle ID (také přes DTO)
         /// </summary>
         [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(int id)
+        public async Task<ActionResult<UserDto>> GetUser(int id)
         {
             var user = await _context.Users.FindAsync(id);
             if (user == null)
-            {
                 return NotFound();
-            }
-            return user;
+
+            var userDto = new UserDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                Role = user.Role
+            };
+
+            return Ok(userDto);
         }
 
         /// <summary>
-        /// Přidat nového uživatele. Heslo bude zahashováno před uložením.
+        /// Přidat nového uživatele přes DTO s validací. Heslo bude zahashováno.
         /// </summary>
         [HttpPost]
-        public async Task<ActionResult<User>> CreateUser(User user)
+        public async Task<ActionResult<UserDto>> CreateUser([FromBody] RegisterUserDto dto)
         {
-            // Zahashujeme heslo, které přišlo v poli PasswordHash
-            var hashedPassword = _passwordHasher.HashPassword(user, user.PasswordHash);
-            user.PasswordHash = hashedPassword;
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = new User
+            {
+                Username = dto.Username,
+                Email = dto.Email,
+                Role = dto.Role
+            };
+            user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+
+            var userDto = new UserDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                Role = user.Role
+            };
+
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, userDto);
         }
 
         /// <summary>
-        /// Aktualizovat uživatele podle ID. Pokud se mění heslo, zahashuje nové.
+        /// Aktualizace uživatele (pro zjednodušení zatím přes User model, doporučuji později DTO).
         /// </summary>
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(int id, User updatedUser)
@@ -71,13 +105,12 @@ namespace AttendanceTrackerApi.Controllers
                 return NotFound();
 
             user.Username = updatedUser.Username;
-
-            // Pokud se heslo změnilo, zahashuj nové
-            if (user.PasswordHash != updatedUser.PasswordHash)
-                user.PasswordHash = _passwordHasher.HashPassword(user, updatedUser.PasswordHash);
-
             user.Email = updatedUser.Email;
             user.Role = updatedUser.Role;
+
+            // Pokud přišel nový hash, zahashuj nové heslo (nebo uprav na lepší logiku)
+            if (!string.IsNullOrWhiteSpace(updatedUser.PasswordHash) && user.PasswordHash != updatedUser.PasswordHash)
+                user.PasswordHash = _passwordHasher.HashPassword(user, updatedUser.PasswordHash);
 
             await _context.SaveChangesAsync();
             return NoContent();
