@@ -95,11 +95,8 @@ namespace AttendanceTrackerApi.Controllers
         /// Aktualizace uživatele (pro zjednodušení zatím přes User model, doporučuji později DTO).
         /// </summary>
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(int id, User updatedUser)
+        public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserDto updatedUser)
         {
-            if (id != updatedUser.Id)
-                return BadRequest("ID v URL a v těle se neshoduje.");
-
             var user = await _context.Users.FindAsync(id);
             if (user == null)
                 return NotFound();
@@ -108,13 +105,10 @@ namespace AttendanceTrackerApi.Controllers
             user.Email = updatedUser.Email;
             user.Role = updatedUser.Role;
 
-            // Pokud přišel nový hash, zahashuj nové heslo (nebo uprav na lepší logiku)
-            if (!string.IsNullOrWhiteSpace(updatedUser.PasswordHash) && user.PasswordHash != updatedUser.PasswordHash)
-                user.PasswordHash = _passwordHasher.HashPassword(user, updatedUser.PasswordHash);
-
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
 
         /// <summary>
         /// Smazat uživatele podle ID.
