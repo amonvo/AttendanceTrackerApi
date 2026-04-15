@@ -1,0 +1,174 @@
+# AttendanceTrackerApi
+
+A RESTful Web API built with **ASP.NET Core 8** for tracking employee attendance. The API provides full management of users and their daily attendance records, with secure password hashing and a clean DTO-based architecture.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | ASP.NET Core 8 Web API |
+| ORM | Entity Framework Core 9 |
+| Database | SQLite |
+| Password Hashing | ASP.NET Core Identity `PasswordHasher<T>` |
+| API Documentation | Swagger / Swashbuckle |
+| Language | C# 12 / .NET 8 |
+
+---
+
+## Features
+
+- **User management** — create, read, update and delete users with role assignment (`admin` / `user`)
+- **Secure password storage** — passwords are never stored in plain text; `PasswordHasher<User>` from ASP.NET Core Identity is used for hashing
+- **DTO pattern** — incoming and outgoing data is decoupled from the domain model via dedicated DTOs, preventing password hashes from leaking in responses
+- **Input validation** — `RegisterUserDto` and `UpdateUserDto` use Data Annotations (`[Required]`, `[EmailAddress]`, `[MinLength]`) with automatic `ModelState` validation
+- **Attendance records** — each record stores the date, arrival time, departure time and an optional note for a specific user
+- **Full CRUD** on both `Users` and `AttendanceRecords` resources
+- **CORS** pre-configured for a local frontend running on `http://localhost:5173`
+- **EF Core Migrations** — database schema versioned and reproducible via migrations
+- **Swagger UI** — interactive API documentation available out of the box in Development mode
+
+---
+
+## API Endpoints
+
+### Users — `/api/users`
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| `GET` | `/api/users` | Get all users (no password hash) | — |
+| `GET` | `/api/users/{id}` | Get a single user by ID | — |
+| `POST` | `/api/users` | Register a new user | `RegisterUserDto` |
+| `PUT` | `/api/users/{id}` | Update an existing user | `UpdateUserDto` |
+| `DELETE` | `/api/users/{id}` | Delete a user by ID | — |
+
+### Attendance Records — `/api/attendancerecords`
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| `GET` | `/api/attendancerecords` | Get all attendance records | — |
+| `GET` | `/api/attendancerecords/user/{userId}` | Get all records for a specific user | — |
+| `POST` | `/api/attendancerecords` | Create a new attendance record | `AttendanceRecord` |
+| `PUT` | `/api/attendancerecords/{id}` | Update an existing record | `AttendanceRecord` |
+| `DELETE` | `/api/attendancerecords/{id}` | Delete a record by ID | — |
+
+### Request Body Schemas
+
+**`RegisterUserDto`**
+```json
+{
+  "username": "john.doe",
+  "email": "john.doe@example.com",
+  "password": "secret123",
+  "role": "user"
+}
+```
+
+**`UpdateUserDto`**
+```json
+{
+  "username": "john.doe",
+  "email": "john.doe@example.com",
+  "role": "admin"
+}
+```
+
+**`AttendanceRecord`**
+```json
+{
+  "id": 1,
+  "userId": 3,
+  "date": "2025-06-20",
+  "arrivalTime": "08:00:00",
+  "departureTime": "16:30:00",
+  "note": "Working from home"
+}
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Git](https://git-scm.com/)
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/amonvo/AttendanceTrackerApi.git
+cd AttendanceTrackerApi
+```
+
+### 2. Apply EF Core migrations
+
+The database file (`attendance.db`) will be created automatically in the project root.
+
+```bash
+dotnet ef database update
+```
+
+> If `dotnet ef` is not installed globally, run `dotnet tool install --global dotnet-ef` first.
+
+### 3. Run the API
+
+```bash
+dotnet run
+```
+
+The API will start on:
+- HTTP: `http://localhost:5135`
+- HTTPS: `https://localhost:7024`
+
+### 4. Open Swagger UI
+
+Navigate to `http://localhost:5135/swagger` in your browser to explore and test all endpoints interactively.
+
+---
+
+## Project Structure
+
+```
+AttendanceTrackerApi/
+??? Controllers/
+?   ??? AttendanceRecordsController.cs   # CRUD endpoints for attendance records
+?   ??? UsersController.cs               # CRUD endpoints for users
+??? Data/
+?   ??? AppDbContext.cs                  # EF Core DbContext
+??? Dtos/
+?   ??? RegisterUserDto.cs               # Input DTO for user registration
+?   ??? UpdateUserDto.cs                 # Input DTO for user updates
+?   ??? UserDto.cs                       # Output DTO (hides password hash)
+??? Migrations/                          # EF Core migration files
+??? Models/
+?   ??? AttendanceRecord.cs              # Attendance record entity
+?   ??? User.cs                          # User entity
+??? Properties/
+?   ??? launchSettings.json              # Launch profiles and ports
+??? appsettings.json                     # App configuration and connection string
+??? attendance.db                        # SQLite database (auto-generated)
+??? Program.cs                           # Application entry point and DI setup
+??? AttendanceTrackerApi.csproj          # Project file and NuGet dependencies
+```
+
+---
+
+## Configuration
+
+The SQLite connection string is defined in `appsettings.json`:
+
+```json
+"ConnectionStrings": {
+  "DefaultConnection": "Data Source=attendance.db"
+}
+```
+
+To change the database path, update the `Data Source` value and re-run `dotnet ef database update`.
+
+---
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
