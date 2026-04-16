@@ -2,9 +2,9 @@ name: CI Build
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   build-backend:
@@ -26,22 +26,3 @@ jobs:
 
       - name: Publish
         run: dotnet publish -c Release -o ./publish
-
-  build-frontend:
-    name: Build Frontend
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        working-directory: ./attendance-tracker-frontend
-        run: npm ci
-
-      - name: Build
-        working-directory: ./attendance-tracker-frontend
-        run: npm run build
