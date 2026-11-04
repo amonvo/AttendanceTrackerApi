@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 namespace AttendanceTrackerApi.Controllers;
+
 [ApiController, Authorize, Route("api/attendancerecords")]
 public class AttendanceRecordsController(AppDbContext db) : ControllerBase
 {

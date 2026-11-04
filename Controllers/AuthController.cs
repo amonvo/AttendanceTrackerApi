@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 namespace AttendanceTrackerApi.Controllers;
+
 [ApiController, Route("api/auth")]
 public class AuthController(AppDbContext db, IPasswordHasher<User> hasher) : ControllerBase
 {

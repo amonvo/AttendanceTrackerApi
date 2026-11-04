@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 namespace AttendanceTrackerApi.Dtos;
+
 public class UpdateUserDto : IValidatableObject
 {
     [Required, StringLength(80, MinimumLength = 3)] public string Username { get; set; } = "";

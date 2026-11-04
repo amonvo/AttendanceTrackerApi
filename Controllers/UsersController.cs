@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 namespace AttendanceTrackerApi.Controllers;
+
 [ApiController, Authorize, Route("api/users")]
 public class UsersController(AppDbContext db, IPasswordHasher<User> hasher) : ControllerBase
 {

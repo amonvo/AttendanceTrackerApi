@@ -3,6 +3,7 @@ using AttendanceTrackerApi.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 namespace AttendanceTrackerApi.Data;
+
 public static class DatabaseInitializer
 {
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration configuration)

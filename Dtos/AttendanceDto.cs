@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 namespace AttendanceTrackerApi.Dtos;
+
 public class AttendanceDto : IValidatableObject
 {
     [Range(1, int.MaxValue)] public int UserId { get; set; }
