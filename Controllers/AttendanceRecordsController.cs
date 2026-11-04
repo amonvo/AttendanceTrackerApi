@@ -1,98 +1,57 @@
-﻿using AttendanceTrackerApi.Data;
+using System.Security.Claims;
+using AttendanceTrackerApi.Data;
+using AttendanceTrackerApi.Dtos;
 using AttendanceTrackerApi.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
-namespace AttendanceTrackerApi.Controllers
+namespace AttendanceTrackerApi.Controllers;
+[ApiController, Authorize, Route("api/attendancerecords")]
+public class AttendanceRecordsController(AppDbContext db) : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class AttendanceRecordsController : ControllerBase
+    private int CurrentId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private bool CanAccess(int id) => User.IsInRole("admin") || id == CurrentId;
+    [HttpGet]
+    public async Task<IActionResult> List([FromQuery] DateTime? from, [FromQuery] DateTime? to)
     {
-        private readonly AppDbContext _context;
-
-        public AttendanceRecordsController(AppDbContext context)
-        {
-            _context = context;
-        }
-
-        /// <summary>
-        /// Získat všechny záznamy docházky.
-        /// </summary>
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<AttendanceRecord>>> GetAttendanceRecords()
-        {
-            return await _context.AttendanceRecords.ToListAsync();
-        }
-
-        /// <summary>
-        /// Získat všechny záznamy docházky pro konkrétního uživatele.
-        /// </summary>
-        [HttpGet("user/{userId}")]
-        public async Task<ActionResult<IEnumerable<AttendanceRecord>>> GetRecordsByUser(int userId)
-        {
-            var records = await _context.AttendanceRecords
-                .Where(a => a.UserId == userId)
-                .ToListAsync();
-
-            return records;
-        }
-
-        /// <summary>
-        /// Přidat nový záznam docházky.
-        /// </summary>
-        [HttpPost]
-        public async Task<ActionResult<AttendanceRecord>> CreateAttendanceRecord(AttendanceRecord record)
-        {
-            _context.AttendanceRecords.Add(record);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetAttendanceRecords), new { id = record.Id }, record);
-        }
-
-        /// <summary>
-        /// Aktualizovat existující záznam docházky.
-        /// </summary>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateAttendanceRecord(int id, AttendanceRecord updatedRecord)
-        {
-            if (id != updatedRecord.Id)
-            {
-                return BadRequest("ID v URL a těle se neshoduje.");
-            }
-
-            var record = await _context.AttendanceRecords.FindAsync(id);
-            if (record == null)
-            {
-                return NotFound();
-            }
-
-            // Aktualizace hodnot
-            record.UserId = updatedRecord.UserId;
-            record.Date = updatedRecord.Date;
-            record.ArrivalTime = updatedRecord.ArrivalTime;
-            record.DepartureTime = updatedRecord.DepartureTime;
-            record.Note = updatedRecord.Note;
-
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        /// <summary>
-        /// Smazat záznam docházky podle ID.
-        /// </summary>
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAttendanceRecord(int id)
-        {
-            var record = await _context.AttendanceRecords.FindAsync(id);
-            if (record == null)
-            {
-                return NotFound();
-            }
-
-            _context.AttendanceRecords.Remove(record);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
+        var start = from?.Date ?? DateTime.Today.AddDays(-89);
+        var end = to?.Date ?? DateTime.Today;
+        if (end < start || (end - start).TotalDays > 366) return BadRequest(new ProblemDetails { Title = "Choose a date range of at most 366 days.", Status = 400 });
+        var records = db.AttendanceRecords.AsNoTracking().Where(r => r.Date >= start && r.Date <= end);
+        if (!User.IsInRole("admin")) records = records.Where(r => r.UserId == CurrentId);
+        return Ok(await records.OrderByDescending(r => r.Date).ThenByDescending(r => r.Id).ToListAsync());
+    }
+    [HttpGet("user/{userId:int}")]
+    public async Task<IActionResult> ByUser(int userId)
+    {
+        if (!CanAccess(userId)) return Forbid();
+        return Ok(await db.AttendanceRecords.AsNoTracking().Where(r => r.UserId == userId && r.Date >= DateTime.Today.AddDays(-89))
+            .OrderByDescending(r => r.Date).ToListAsync());
+    }
+    [HttpPost]
+    public async Task<IActionResult> Create(AttendanceDto dto)
+    {
+        if (!CanAccess(dto.UserId)) return Forbid();
+        if (!await db.Users.AnyAsync(u => u.Id == dto.UserId)) return BadRequest(new ProblemDetails { Title = "User does not exist.", Status = 400 });
+        var record = new AttendanceRecord { UserId = dto.UserId, Date = dto.Date.Date, ArrivalTime = dto.ArrivalTime, DepartureTime = dto.DepartureTime, Note = dto.Note?.Trim() };
+        db.AttendanceRecords.Add(record); await db.SaveChangesAsync(); return StatusCode(201, record);
+    }
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, AttendanceDto dto)
+    {
+        var record = await db.AttendanceRecords.FindAsync(id);
+        if (record is null) return NotFound();
+        if (!CanAccess(record.UserId) || !CanAccess(dto.UserId)) return Forbid();
+        if (!await db.Users.AnyAsync(u => u.Id == dto.UserId)) return BadRequest(new ProblemDetails { Title = "User does not exist.", Status = 400 });
+        record.UserId = dto.UserId; record.Date = dto.Date.Date; record.ArrivalTime = dto.ArrivalTime; record.DepartureTime = dto.DepartureTime; record.Note = dto.Note?.Trim();
+        await db.SaveChangesAsync(); return Ok(record);
+    }
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var record = await db.AttendanceRecords.FindAsync(id);
+        if (record is null) return NotFound();
+        if (!CanAccess(record.UserId)) return Forbid();
+        db.AttendanceRecords.Remove(record); await db.SaveChangesAsync(); return NoContent();
     }
 }

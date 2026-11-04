@@ -1,26 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
 using AttendanceTrackerApi.Models;
-
-namespace AttendanceTrackerApi.Data
+using Microsoft.EntityFrameworkCore;
+namespace AttendanceTrackerApi.Data;
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    /// <summary>
-    /// Kontext databáze pro AttendanceTrackerApi.
-    /// </summary>
-    public class AppDbContext : DbContext
+    public DbSet<User> Users => Set<User>();
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options)
-            : base(options)
-        {
-        }
-
-        /// <summary>
-        /// Tabulka uživatelů.
-        /// </summary>
-        public DbSet<User> Users { get; set; }
-
-        /// <summary>
-        /// Tabulka záznamů docházky.
-        /// </summary>
-        public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+        modelBuilder.Entity<User>().Property(u => u.Username).UseCollation("NOCASE");
+        modelBuilder.Entity<User>().Property(u => u.Email).UseCollation("NOCASE");
+        modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
+        modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+        modelBuilder.Entity<AttendanceRecord>().HasIndex(r => new { r.UserId, r.Date });
+        modelBuilder.Entity<AttendanceRecord>().HasOne<User>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }

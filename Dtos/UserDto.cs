@@ -1,13 +1,6 @@
-﻿namespace AttendanceTrackerApi.Dtos
+using AttendanceTrackerApi.Models;
+namespace AttendanceTrackerApi.Dtos;
+public record UserDto(int Id, string Username, string Email, string Role, string Position)
 {
-    /// <summary>
-    /// Výstupní DTO pro uživatele – nikdy neposílá hash hesla!
-    /// </summary>
-    public class UserDto
-    {
-        public int Id { get; set; }
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string Role { get; set; }
-    }
+    public static UserDto From(User user) => new(user.Id, user.Username, user.Email, user.Role, user.Position);
 }

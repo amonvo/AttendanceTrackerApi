@@ -1,118 +1,50 @@
-# AttendanceTrackerApi
+# Attendance Workspace · API
 
-![Build](https://github.com/amonvo/AttendanceTrackerApi/actions/workflows/build.yml/badge.svg)
-![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)
-![EF Core](https://img.shields.io/badge/EF%20Core-9.0-512BD4)
-![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-green)
+ASP.NET Core 10 and SQLite backend for a bilingual team attendance workspace. Administrators manage members and records. Members can access and edit their own attendance. The React interface lives in [attendance-tracker-frontend](https://github.com/amonvo/attendance-tracker-frontend).
 
-REST API for employee attendance tracking built with ASP.NET Core 8, Entity Framework Core, and SQLite. Part of the [AttendanceTracker](https://github.com/amonvo/attendance-tracker-frontend) full-stack project.
+## Local development
 
-## Tech Stack
+Install .NET 10 SDK. Clone both repositories into sibling directories and check out the matching `codex/professional-attendance` branches while the paired PRs are under review.
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | ASP.NET Core 8 Web API |
-| ORM | Entity Framework Core 9 |
-| Database | SQLite |
-| Security | ASP.NET Core Identity PasswordHasher |
-| Docs | Swagger / Swashbuckle |
-| CI | GitHub Actions |
-| Container | Docker |
-
-## Features
-
-- User management with roles (`admin` / `user`)
-- Password hashing — plain-text passwords never stored
-- Attendance records per user (arrival, departure, date, notes)
-- Full CRUD for Users and AttendanceRecords
-- DTO pattern — sensitive data never exposed
-- EF Core migrations — versioned schema
-- CORS pre-configured for frontend on `http://localhost:5173`
-- Swagger UI in Development mode
-
-## API Endpoints
-
-### Users — `/api/users`
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/users` | Get all users |
-| GET | `/api/users/{id}` | Get user by ID |
-| POST | `/api/users` | Create user |
-| PUT | `/api/users/{id}` | Update user |
-| DELETE | `/api/users/{id}` | Delete user |
-
-### Attendance — `/api/attendancerecords`
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/attendancerecords` | Get all records |
-| GET | `/api/attendancerecords/user/{userId}` | Get by user |
-| POST | `/api/attendancerecords` | Create record |
-| PUT | `/api/attendancerecords/{id}` | Update record |
-| DELETE | `/api/attendancerecords/{id}` | Delete record |
-
-## Getting Started
-
-### Option A — Docker (recommended)
-
-```bash
-git clone https://github.com/amonvo/AttendanceTrackerApi.git
-cd AttendanceTrackerApi
-docker build -t attendance-api .
-docker run -p 5000:8080 attendance-api
+```powershell
+dotnet restore --locked-mode
+$env:Bootstrap__Username = 'admin'
+$env:Bootstrap__Email = 'admin@example.com'
+$credential = Read-Host 'Choose the initial administrator password (12+ characters)' -AsSecureString
+$env:Bootstrap__Password = [System.Net.NetworkCredential]::new('', $credential).Password
+dotnet run -- --initialize
+Remove-Item Env:Bootstrap__Password
+dotnet run --launch-profile http
 ```
 
-### Option B — Local
+The API listens on `http://localhost:5135`. Start the sibling frontend with `npm ci` and `npm run dev`, then open `http://127.0.0.1:5173`. The Vite proxy keeps requests and authentication on the same origin. Use a consistent hostname throughout your session.
 
-```bash
-git clone https://github.com/amonvo/AttendanceTrackerApi.git
-cd AttendanceTrackerApi
-dotnet ef database update
-dotnet run
+Initialization runs versioned migrations and creates the first administrator only when no administrator exists. Credentials belong in local configuration. Existing identities that conflict with the bootstrap account require deliberate review.
+
+## Docker Compose
+
+Copy `.env.example` to `.env`, set a unique bootstrap password and run `docker compose up --build`. Open `http://localhost:3000`. Only the frontend is published, bound to loopback. SQLite is stored in the `attendance-data` volume. Compose uses development cookie settings for local HTTP. The initializer runs as root solely to prepare volume ownership, while the API runs as the container application user.
+
+## API and security
+
+`GET /api/auth/csrf` returns a request token. Include it as `X-CSRF-TOKEN` on every mutation, including login. Refresh it after identity changes. `POST /api/auth/login` accepts username and password, `GET /api/auth/me` returns the current identity and `POST /api/auth/logout` ends the session. Cookies are HttpOnly and SameSite Strict. Production cookies require HTTPS. Login attempts are rate limited.
+
+`/api/users` supports administrator CRUD and self-only reads for members. Usernames and email addresses are unique ignoring case. Positions are persisted. Self-deletion and self-demotion are blocked. Users with attendance history cannot be deleted until that history is explicitly handled.
+
+`/api/attendancerecords` supports CRUD with ownership checks. List queries accept `from` and `to`, defaulting to the last 90 days, with a maximum 366-day difference. Times represent local wall-clock times on one calendar day. Split overnight work across dates. Departure must follow arrival. Password hashes never appear in DTOs.
+
+## Existing databases
+
+Back up SQLite before upgrading. Test the migration on a copy first. Duplicate usernames/emails ignoring case or orphan attendance records must be resolved before applying the new uniqueness and foreign-key constraints. Initialization fails rather than removing conflicting data. Coordinate deployment of the API and frontend because authentication and validation are new requirements.
+
+## Verification
+
+```sh
+dotnet restore --locked-mode
+dotnet build -c Release --no-restore
+dotnet test -c Release --no-build
 ```
 
-API runs on `https://localhost:7024` · Swagger at `/swagger`
+Integration tests exercise anonymous access, CSRF, ownership, administrator CRUD, validation, history protection, logout and upgrades from the original schema. CI also builds the container.
 
-### Full Stack (Docker Compose)
-
-```bash
-git clone https://github.com/amonvo/AttendanceTrackerApi.git
-git clone https://github.com/amonvo/attendance-tracker-frontend.git
-cd ..
-docker-compose up --build
-```
-
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:5000`
-
-## Project Structure
-
-AttendanceTrackerApi/
-├── Controllers/
-│   ├── AttendanceRecordsController.cs
-│   └── UsersController.cs
-├── Data/
-│   └── AppDbContext.cs
-├── Dtos/
-│   ├── RegisterUserDto.cs
-│   ├── UpdateUserDto.cs
-│   └── UserDto.cs
-├── Migrations/
-├── Models/
-│   ├── AttendanceRecord.cs
-│   └── User.cs
-├── .github/workflows/
-│   └── build.yml
-├── Dockerfile
-└── Program.cs
-
-## Related
-
-- [attendance-tracker-frontend](https://github.com/amonvo/attendance-tracker-frontend) — React frontend
-
-## License
-
-MIT
+For production, configure HTTPS, protected persistent data-protection keys, backups and access controls. Account invitation, password recovery, audit trails and payroll rules remain roadmap items. See SECURITY.md. The original project described MIT licensing but did not include a license file. License clarification is pending author review.
