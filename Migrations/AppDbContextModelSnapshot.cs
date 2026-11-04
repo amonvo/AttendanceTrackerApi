@@ -15,7 +15,7 @@ namespace AttendanceTrackerApi.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.6");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("AttendanceTrackerApi.Models.AttendanceRecord", b =>
                 {
@@ -40,6 +40,8 @@ namespace AttendanceTrackerApi.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UserId", "Date");
+
                     b.ToTable("AttendanceRecords");
                 });
 
@@ -51,9 +53,14 @@ namespace AttendanceTrackerApi.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Position")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -63,11 +70,27 @@ namespace AttendanceTrackerApi.Migrations
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("AttendanceTrackerApi.Models.AttendanceRecord", b =>
+                {
+                    b.HasOne("AttendanceTrackerApi.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

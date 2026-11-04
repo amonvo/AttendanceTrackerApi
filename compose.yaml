@@ -1,0 +1,28 @@
+# Local development only. HTTPS is required for a production deployment.
+services:
+  initialize:
+    build: .
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["dotnet AttendanceTrackerApi.dll --initialize && chown -R 1654:1654 /data"]
+    environment:
+      ConnectionStrings__DefaultConnection: Data Source=/data/attendance.db
+      Bootstrap__Username: ${BOOTSTRAP_USERNAME:-admin}
+      Bootstrap__Email: ${BOOTSTRAP_EMAIL:-admin@example.com}
+      Bootstrap__Password: ${BOOTSTRAP_PASSWORD:?Set BOOTSTRAP_PASSWORD in .env}
+    volumes: [attendance-data:/data]
+  backend:
+    build: .
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Data Source=/data/attendance.db
+    volumes: [attendance-data:/data]
+  frontend:
+    build: ../attendance-tracker-frontend
+    depends_on: [backend]
+    ports: ["127.0.0.1:3000:8080"]
+volumes:
+  attendance-data:

@@ -1,22 +1,15 @@
-﻿// Dtos/UpdateUserDto.cs
 using System.ComponentModel.DataAnnotations;
+namespace AttendanceTrackerApi.Dtos;
 
-namespace AttendanceTrackerApi.Dtos
+public class UpdateUserDto : IValidatableObject
 {
-    /// <summary>
-    /// DTO pro editaci uživatele (z API)
-    /// </summary>
-    public class UpdateUserDto
+    [Required, StringLength(80, MinimumLength = 3)] public string Username { get; set; } = "";
+    [Required, EmailAddress, StringLength(254)] public string Email { get; set; } = "";
+    [Required, RegularExpression("^(admin|user)$")] public string Role { get; set; } = "user";
+    [Required(AllowEmptyStrings = true), StringLength(80)] public string Position { get; set; } = "";
+    public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {
-        [Required]
-        [MinLength(3)]
-        public string Username { get; set; }
-
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; }
-
-        [Required]
-        public string Role { get; set; }
+        if (Username.Trim().Length < 3)
+            yield return new ValidationResult("Username needs at least three non-padding characters.", [nameof(Username)]);
     }
 }

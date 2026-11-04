@@ -1,33 +1,11 @@
-﻿namespace AttendanceTrackerApi.Models
+namespace AttendanceTrackerApi.Models;
+
+public class User
 {
-    /// <summary>
-    /// Reprezentuje uživatele systému.
-    /// </summary>
-    public class User
-    {
-        /// <summary>
-        /// Primární klíč uživatele.
-        /// </summary>
-        public int Id { get; set; }
-
-        /// <summary>
-        /// Uživatelské jméno (unikátní).
-        /// </summary>
-        public string Username { get; set; }
-
-        /// <summary>
-        /// Zahashované heslo uživatele.
-        /// </summary>
-        public string PasswordHash { get; set; }
-
-        /// <summary>
-        /// E-mail uživatele.
-        /// </summary>
-        public string Email { get; set; }
-
-        /// <summary>
-        /// Role uživatele (např. admin, user).
-        /// </summary>
-        public string Role { get; set; }
-    }
+    public int Id { get; set; }
+    public string Username { get; set; } = "";
+    public string PasswordHash { get; set; } = "";
+    public string Email { get; set; } = "";
+    public string Role { get; set; } = "user";
+    public string Position { get; set; } = "";
 }
